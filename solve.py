@@ -280,6 +280,9 @@ def random_board():
 def generate_puzzle():
     board = random_board()
 
+    with open('current-puzzle.txt', 'w') as f:
+        f.write(board.board_str())
+
     # Minimum score for "interesting" puzzles
     THRESHOLD = 240
 
