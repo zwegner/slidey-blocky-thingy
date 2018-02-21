@@ -24,7 +24,7 @@ def gen_rand_64(n):
         yield int64(d)
 
 ZOBRIST = list(gen_rand_64(16*16*64))
-HASH_SIZE = 2 * (1 << 20)
+HASH_SIZE = 16 * (1 << 20)
 HASH_MASK = HASH_SIZE - 1
 assert HASH_SIZE & HASH_MASK == 0
 HASH_TABLE = array.array('L', (0 for i in range(HASH_SIZE)))
