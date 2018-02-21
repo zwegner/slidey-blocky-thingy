@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <script src="react/react.development.js"></script>
+        <script src="react/react-dom.development.js"></script>
+        <script src="react/JSXTransformer.js"></script>
+        <script src="app.jsx" type="text/jsx"></script>
+    </head>
+    <body style="margin: 0px">
+        <div id="content"></div>
+    </body>
+    <style>
+    ul {
+        height: 80%;
+        width: 400px;
+        overflow-y: scroll;
+        text-align: left;
+        margin: auto;
+        list-style-type: none;
+        border: 3px inset;
+        padding: 0px;
+    }
+    ul > li {
+        border: 1px solid #333;
+        padding: 3px;
+    }
+    ul > li:hover {
+        background-color: #555;
+        color: #AAA;
+    }
+
+    .button {
+        border-width: 3px;
+        border-radius: 3px;
+        color: #333;
+        background-color: #DDD;
+        border-style: outset;
+    }
+    .bigButton {
+        height: 50px;
+        width: 50px;
+        font-size: 30px;
+        margin: 10px;
+    }
+    .smallButton {
+        height: 30px;
+        font-size: 20px;
+        margin: 5px;
+    }
+    .button:disabled {
+        color: #AAA;
+        background-color: #888;
+        border-style: inset;
+    }
+    .button:enabled:active:hover {
+        color: #DDD;
+        background-color: #333;
+        border-style: inset;
+    }
+
+    </style>
+
+    <script type="text/jsx">
+        ReactDOM.render(<Base />, document.getElementById('content'));
+    </script>
+</html>
