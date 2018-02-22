@@ -76,6 +76,14 @@ class Board:
         for i, p in enumerate(self.pieces):
             self.place(p, i)
 
+    def coord_list(self):
+        return [[p.x, p.y] for p in self.pieces]
+
+    def init_from_coord_list(self, cl):
+        for p, c in zip(self.pieces, cl):
+            p.x, p.y = c
+        self.init_state()
+
     def verify_state(self):
         old_key = self.hash_key
         old_state = self.state
@@ -296,12 +304,14 @@ def generate_puzzle(board=None, threshold=None):
 
     # Now walk around the board making moves to extend the solution. At this point
     # all moves should change the solution length by at most 1.
-    candidates = [board]
+    candidates = [board.coord_list()]
+    candidate = copy.deepcopy(board)
     for target_score in range(score, 0, -1):
         if target_score < threshold:
             print('Target %s: %s candidates' % (target_score, len(candidates)))
         next_candidates = []
-        for candidate in candidates:
+        for candidate_p in candidates:
+            candidate.init_from_coord_list(candidate_p)
             for move in candidate.gen_moves():
                 candidate.make_move(move)
                 move_depth, move_score = candidate.iterate()
@@ -309,7 +319,7 @@ def generate_puzzle(board=None, threshold=None):
 
                 # Lower score, we found a harder problem. Add it to the next candidates set
                 if move_score < target_score:
-                    next_candidates.append(copy.deepcopy(candidate))
+                    next_candidates.append(candidate.coord_list())
 
                 candidate.make_move(move, reverse=True)
 
@@ -321,14 +331,15 @@ def generate_puzzle(board=None, threshold=None):
             break
 
     assert candidates
-    board = candidates.pop()
+    candidate_p = candidates.pop()
+    candidate.init_from_coord_list(candidate_p)
     if target_score < threshold:
         print('final puzzle, %s moves:' % (255 - target_score))
-        board.print()
+        candidate.print()
         with open('puzzles.txt', 'at') as f:
-            f.write('{"moves": %s, "board": "%s"},\n' % (255 - target_score, board.board_str(sep=' ')))
+            f.write('{"moves": %s, "board": "%s"},\n' % (255 - target_score, candidate.board_str(sep=' ')))
 
-    return board
+    return candidate
 
 def parse(string):
     lines = string.splitlines()
