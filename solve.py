@@ -334,6 +334,30 @@ def random_board():
             break
     return board
 
+def generation_search(board, target_score, best_score):
+    best_coords = None
+    for move in board.gen_moves():
+        board.make_move(move)
+        move_depth, move_score = board.iterate()
+        assert abs(move_score - target_score) <= 1, 'wacky score: %s %s' % (target_score, move_score)
+
+        # Lower score, we found a harder problem. Recurse!
+        if move_score < target_score:
+            # New best score
+            if move_score < best_score:
+                best_score = move_score
+                best_coords = board.coord_list()
+                print('new best:', 255 - move_score)
+
+            move_sub_score, move_sub_coords = generation_search(board, move_score, best_score)
+            if move_sub_score < best_score:
+                best_score = move_sub_score
+                best_coords = move_sub_coords
+
+        board.make_move(move, reverse=True)
+
+    return best_score, best_coords
+
 def generate_puzzle(board=None, threshold=None):
     if not board:
         board = random_board()
@@ -351,44 +375,17 @@ def generate_puzzle(board=None, threshold=None):
     if not score:
         return None
 
-    # Now walk around the board making moves to extend the solution. At this point
-    # all moves should change the solution length by at most 1.
-    candidates = [board.coord_list()]
-    candidate = copy.deepcopy(board)
-    for target_score in range(score, 0, -1):
-        if target_score < threshold:
-            print('Target %s: %s candidates' % (target_score, len(candidates)))
-        next_candidates = []
-        for candidate_p in candidates:
-            candidate.init_from_coord_list(candidate_p)
-            for move in candidate.gen_moves():
-                candidate.make_move(move)
-                move_depth, move_score = candidate.iterate()
-                assert abs(move_score - target_score) <= 1, 'wacky score: %s %s' % (target_score, move_score)
+    best_score, best_coords = generation_search(board, score, threshold)
 
-                # Lower score, we found a harder problem. Add it to the next candidates set
-                if move_score < target_score:
-                    next_candidates.append(candidate.coord_list())
-
-                candidate.make_move(move, reverse=True)
-
-        # We searched through all problems with a given solution length. Check if there are any
-        # longer problems for the next iteration, if not, break.
-        if next_candidates:
-            candidates = next_candidates
-        else:
-            break
-
-    assert candidates
-    candidate_p = candidates.pop()
-    candidate.init_from_coord_list(candidate_p)
-    if target_score < threshold:
-        print('final puzzle, %s moves:' % (255 - target_score))
-        candidate.print()
+    if best_score < threshold:
+        assert best_coords
+        board.init_from_coord_list(best_coords)
+        print('final puzzle, %s moves:' % (255 - best_score))
+        board.print()
         with open('puzzles.txt', 'at') as f:
-            f.write('{"moves": %s, "board": "%s"},\n' % (255 - target_score, candidate.board_str(sep=' ')))
+            f.write('{"moves": %s, "board": "%s"},\n' % (255 - best_score, board.board_str(sep=' ')))
 
-    return candidate
+    return board
 
 def parse(string):
     lines = string.splitlines()
