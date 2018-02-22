@@ -277,14 +277,15 @@ def random_board():
             break
     return board
 
-def generate_puzzle():
-    board = random_board()
+def generate_puzzle(board=None, threshold=None):
+    if not board:
+        board = random_board()
 
-    with open('current-puzzle.txt', 'w') as f:
-        f.write(board.board_str())
+        with open('current-puzzle.txt', 'w') as f:
+            f.write(board.board_str())
 
     # Minimum score for "interesting" puzzles
-    THRESHOLD = 240
+    threshold = threshold or 240
 
     # Clear hash--hash keys are only valid for a given board configuration
     for i in range(len(HASH_TABLE)):
@@ -297,7 +298,7 @@ def generate_puzzle():
     # all moves should change the solution length by at most 1.
     candidates = [board]
     for target_score in range(score, 0, -1):
-        if target_score < THRESHOLD:
+        if target_score < threshold:
             print('Target %s: %s candidates' % (target_score, len(candidates)))
         next_candidates = []
         for candidate in candidates:
@@ -321,7 +322,7 @@ def generate_puzzle():
 
     assert candidates
     board = candidates.pop()
-    if target_score < THRESHOLD:
+    if target_score < threshold:
         print('final puzzle, %s moves:' % (255 - target_score))
         board.print()
         with open('puzzles.txt', 'at') as f:
@@ -349,6 +350,11 @@ def parse(string):
         pieces.append(Piece(x1, y1, x2 - x1 + 1, y2 - y1 + 1))
     return Board(len(lines), pieces)
 
-random.seed()
-while True:
-    generate_puzzle()
+if len(sys.argv) > 1 and sys.argv[1] == '-c':
+    with open('current-puzzle.txt') as f:
+        board = parse(f.read())
+    generate_puzzle(board=board, threshold=255)
+else:
+    random.seed()
+    while True:
+        generate_puzzle()
