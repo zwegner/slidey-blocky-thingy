@@ -24,18 +24,22 @@ def gen_rand_64(n):
         yield int64(d)
 
 ZOBRIST = list(gen_rand_64(16*16*64))
-HASH_SIZE = 16 * (1 << 20)
+HASH_SIZE = 4 * (1 << 20)
 HASH_MASK = HASH_SIZE - 1
 assert HASH_SIZE & HASH_MASK == 0
+HASH_BUCKET_SIZE = 2
 HASH_TABLE = array.array('L', (0 for i in range(HASH_SIZE)))
 
-def hash_entry_decode(entry):
+def hash_entry_decode_simple(entry):
     key = entry & 0xFFFFFFFF
     depth = entry >> 32 & 0xFF
     score = entry >> 40 & 0xFF
+    return (key, depth, score)
+
+def hash_entry_decode_move(entry):
     from_xy = entry >> 48 & 0xFF
     to_xy = entry >> 56 & 0xFF
-    return (key, depth, score, from_xy, to_xy)
+    return (from_xy, to_xy)
 
 def hash_entry_encode(key, depth, score, from_xy, to_xy, self):
     assert 0 < key <= 0xFFFFFFFF
@@ -189,13 +193,14 @@ class Board:
             return 0
 
         # Hash lookup
-        hash_index = self.hash_key & HASH_MASK
+        hash_index = self.hash_key & HASH_MASK & ~(HASH_BUCKET_SIZE - 1)
         hash_key_verify = self.hash_key >> 32
-        entry = HASH_TABLE[hash_index]
-        if entry:
-            (entry_key, entry_depth, entry_score, _, _) = hash_entry_decode(entry)
-            if entry_key == hash_key_verify and entry_depth >= depth:
-                return entry_score
+        for sub_index in range(HASH_BUCKET_SIZE):
+            entry = HASH_TABLE[hash_index + sub_index]
+            if entry:
+                (entry_key, entry_depth, entry_score) = hash_entry_decode_simple(entry)
+                if entry_key == hash_key_verify and entry_depth >= depth:
+                    return entry_score
 
         best_score = 0
         best_move = None
@@ -215,23 +220,26 @@ class Board:
             best_score -= 1
 
         # Hash store
-        # Simple replacement policy: choose highest depth, newest on ties
-        replace = True
-        if entry:
-            if entry_score == 0:
-                replace = entry_depth <= depth
-            else:
-                replace = entry_score <= best_score
+        # Replace the shallowest of <HASH_BUCKET_SIZE> entries
+        hash_key_verify = self.hash_key >> 32
+        min_depth = 255
+        best_index = 0
+        for sub_index in range(HASH_BUCKET_SIZE):
+            entry = HASH_TABLE[hash_index + sub_index]
+            # XXX inlined from hash_entry_decode()
+            entry_depth = entry >> 32 & 0xFF
+            if entry_depth < min_depth:
+                min_depth = entry_depth
+                best_index = sub_index
 
-        if replace:
-            if best_move:
-                p = self.pieces[best_move.index]
-                xy1 = p.xy
-                xy2 = xy1 + best_move.dxy
-            else:
-                xy1 = xy2 = 0
-            HASH_TABLE[hash_index] = hash_entry_encode(hash_key_verify, depth, best_score,
-                    xy1, xy2, self)
+        if best_move:
+            p = self.pieces[best_move.index]
+            xy1 = p.xy
+            xy2 = xy1 + best_move.dxy
+        else:
+            xy1 = xy2 = 0
+        HASH_TABLE[hash_index + best_index] = hash_entry_encode(hash_key_verify, depth, best_score,
+                xy1, xy2, self)
 
         return best_score
 
@@ -258,10 +266,11 @@ class Board:
             hash_key_verify = self.hash_key >> 32
             entry = HASH_TABLE[hash_index]
             if entry:
-                (key, depth, score, from_xy, to_xy) = hash_entry_decode(entry)
+                (key, _, _) = hash_entry_decode_simple(entry)
                 if key != hash_key_verify:
                     break
                 # Decode move
+                (from_xy, to_xy) = hash_entry_decode_move(entry)
                 state = self.get_state_array()
                 fy, fx = decompose(from_xy)
                 index = state[fy][fx]
