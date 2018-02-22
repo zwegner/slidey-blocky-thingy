@@ -33,115 +33,152 @@ def hash_entry_decode(entry):
     key = entry & 0xFFFFFFFF
     depth = entry >> 32 & 0xFF
     score = entry >> 40 & 0xFF
-    from_x = entry >> 48 & 0xF
-    from_y = entry >> 52 & 0xF
-    to_x = entry >> 56 & 0xF
-    to_y = entry >> 60 & 0xF
-    return (key, depth, score, from_x, from_y, to_x, to_y)
+    from_xy = entry >> 48 & 0xFF
+    to_xy = entry >> 56 & 0xFF
+    return (key, depth, score, from_xy, to_xy)
 
-def hash_entry_encode(key, depth, score, from_x, from_y, to_x, to_y, self):
+def hash_entry_encode(key, depth, score, from_xy, to_xy, self):
     assert 0 < key <= 0xFFFFFFFF
     assert 0 < depth <= 255, str(depth)
     assert 0 <= score <= 255, str(score)
-    assert 0 <= from_x < 16 and 0 <= from_y < 16 and 0 <= to_x < 16 and 0 <= to_y < 16, '%s %s %s %s\n%s' % (from_x, from_y, to_x, to_y)
-    return (key | depth << 32 | score << 40 | from_x << 48 | from_y << 52 |
-            to_x << 56 | to_y << 60)
+    assert 0 <= from_xy < 256 and 0 <= to_xy < 256, '%s %s\n%s' % (from_xy, to_xy)
+    return (key | depth << 32 | score << 40 | from_xy << 48 | to_xy << 56)
+
+SIZE_X = SIZE_Y = PIECE_MASK = TOP_MASK = BOTTOM_MASK = LEFT_MASK = RIGHT_MASK = DIR_INFO = None
+
+# Kinda hacky, initialize some globals based on the board size
+def init_globals(size_x, size_y):
+    global SIZE_X, SIZE_Y, PIECE_MASK, TOP_MASK, BOTTOM_MASK, LEFT_MASK, RIGHT_MASK, DIR_INFO
+
+    SIZE_X, SIZE_Y = size_x, size_y
+
+    PIECE_MASK = [
+        [sum(bitmask(y, 0) for y in range(size)) for size in range(4)],
+        [sum(bitmask(0, x) for x in range(size)) for size in range(4)]
+    ]
+
+    TOP_MASK    = sum(bitmask(0, x) for x in range(SIZE_X))
+    BOTTOM_MASK = sum(bitmask(SIZE_Y - 1, x) for x in range(SIZE_X))
+    LEFT_MASK   = sum(bitmask(y, 0) for y in range(SIZE_Y))
+    RIGHT_MASK  = sum(bitmask(y, SIZE_X - 1) for y in range(SIZE_Y))
+
+    # Move generation info. (stride, positive boundary mask, negative boundary mask) for
+    # vertical and horizontal directions
+    DIR_INFO = [
+        [SIZE_X, BOTTOM_MASK, TOP_MASK],
+        [1, RIGHT_MASK, LEFT_MASK]
+    ]
+
+def compose(y, x):
+    return y * SIZE_X + x
+
+def decompose(xy):
+    return divmod(xy, SIZE_X)
+
+def bitmask(y, x):
+    return 1 << compose(y, x)
 
 class Piece:
-    __slots__ = ['x', 'y', 'dx', 'dy']
-    def __init__(self, x, y, dx, dy):
-        self.x = x
-        self.y = y
-        self.dx = dx
-        self.dy = dy
-        assert (dx == 1 or dy == 1) and (dx > 1 or dy > 1)
+    __slots__ = ['xy', 'hori', 'size']
+    def __init__(self, xy, hori, size):
+        self.xy = xy
+        self.hori = hori
+        self.size = size
+    def mask(self):
+        return PIECE_MASK[self.hori][self.size] << self.xy
 
 class Move:
-    __slots__ = ['index', 'dx', 'dy']
-    def __init__(self, index, dx, dy):
+    __slots__ = ['index', 'dxy']
+    def __init__(self, index, dxy):
         self.index = index
-        self.dx = dx
-        self.dy = dy
+        self.dxy = dxy
 
 class Board:
-    __slots__ = ['size_x', 'size_y', 'pieces', 'state', 'hash_key']
     def __init__(self, size, pieces):
-        self.size_x = self.size_y = size
+        init_globals(size, size)
         self.pieces = pieces
         self.init_state()
 
     def init_state(self):
         self.hash_key = 0
-        self.state = [[-1] * self.size_x for i in range(self.size_y)]
+        self.state = 0
         for i, p in enumerate(self.pieces):
             self.place(p, i)
 
     def coord_list(self):
-        return [[p.x, p.y] for p in self.pieces]
+        return [p.xy for p in self.pieces]
 
     def init_from_coord_list(self, cl):
         for p, c in zip(self.pieces, cl):
-            p.x, p.y = c
+            p.xy = c
         self.init_state()
 
     def verify_state(self):
         old_key = self.hash_key
         old_state = self.state
         self.init_state()
-        if self.state is old_state or self.state != old_state:
-            print('%s\nnew\n%s' % (self.board_str(state=old_state), self.board_str()))
+        if self.state != old_state:
             assert False
         if self.hash_key != old_key:
             print(old_key, self.hash_key)
             assert False
 
-    def board_str(self, state=None, sep='\n'):
-        state = state or self.state
+    def get_state_array(self):
+        # Assemble an array of all piece indices. We only construct this manually in
+        # some cases that don't need to be fast, so it's not worth updating incrementally.
+        state = [[-1] * SIZE_X for i in range(SIZE_Y)]
+        for index, piece in enumerate(self.pieces):
+            for i in range(piece.size):
+                xy = piece.xy + (i if piece.hori else i * SIZE_X)
+                y, x = decompose(xy)
+                state[y][x] = index
+        return state
+
+    def board_str(self, sep='\n'):
+        state = self.get_state_array()
         return sep.join(''.join(('%X' % s) if s > 0 else '+' if s == 0 else '.' for s in row)
             for row in state)
 
     def print(self):
         print(self.board_str())
 
-    def place(self, piece, index, remove=False):
-        self.hash_key ^= ZOBRIST[index << 8 | piece.x << 4 | piece.y]
-        if remove:
-            index = -1
-        for x in range(piece.x, piece.x + piece.dx):
-            for y in range(piece.y, piece.y + piece.dy):
-                self.state[y][x] = index
+    def place(self, piece, index):
+        self.hash_key ^= ZOBRIST[index << 8 | piece.xy]
+        self.state ^= piece.mask()
 
     def gen_moves(self):
         for i, p in enumerate(self.pieces):
-            # Generate in x direction
-            if p.dx > 1:
-                for ddx, bx in [[1, p.x + p.dx - 1], [-1, p.x]]:
-                    dx = ddx
-                    while (0 <= bx + dx < self.size_x and
-                            self.state[p.y][bx + dx] == -1):
-                        yield Move(i, dx, 0)
-                        dx += ddx
-            # Generate in y direction
-            elif p.dy > 1:
-                for ddy, by in [[1, p.y + p.dy - 1], [-1, p.y]]:
-                    dy = ddy
-                    while (0 <= by + dy < self.size_y and
-                            self.state[by + dy][p.x] == -1):
-                        yield Move(i, 0, dy)
-                        dy += ddy
+            init_mask = p.mask()
+            state = self.state ^ init_mask
+            stride, boundary_pos, boundary_neg = DIR_INFO[p.hori]
+
+            # Generate in the positive direction
+            boundary_pos |= state >> stride
+            mask = init_mask
+            dxy = 0
+            while not boundary_pos & mask:
+                mask <<= stride
+                dxy += stride
+                yield Move(i, dxy)
+
+            # Generate in the negative direction
+            boundary_neg |= state << stride
+            mask = init_mask
+            dxy = 0
+            while not boundary_neg & mask:
+                mask >>= stride
+                dxy -= stride
+                yield Move(i, dxy)
 
     def is_won(self):
         # Kinda hacky?
-        first = self.pieces[0]
-        return first.x + first.dx == self.size_x
+        return bool(self.pieces[0].mask() & RIGHT_MASK)
 
     def make_move(self, move, reverse=False):
         # XXX check validity
         piece = self.pieces[move.index]
-        self.place(piece, move.index, remove=True)
-        flip = -1 if reverse else 1
-        piece.x += move.dx * flip
-        piece.y += move.dy * flip
+        self.place(piece, move.index)
+        piece.xy += -move.dxy if reverse else move.dxy
         self.place(piece, move.index)
 
     def search(self, depth):
@@ -156,7 +193,7 @@ class Board:
         hash_key_verify = self.hash_key >> 32
         entry = HASH_TABLE[hash_index]
         if entry:
-            (entry_key, entry_depth, entry_score, _, _, _, _) = hash_entry_decode(entry)
+            (entry_key, entry_depth, entry_score, _, _) = hash_entry_decode(entry)
             if entry_key == hash_key_verify and entry_depth >= depth:
                 return entry_score
 
@@ -189,17 +226,16 @@ class Board:
         if replace:
             if best_move:
                 p = self.pieces[best_move.index]
-                x1, y1 = p.x, p.y
-                x2, y2 = x1 + best_move.dx, y1 + best_move.dy
+                xy1 = p.xy
+                xy2 = xy1 + best_move.dxy
             else:
-                x1, y1, x2, y2 = 0, 0, 0, 0
+                xy1 = xy2 = 0
             HASH_TABLE[hash_index] = hash_entry_encode(hash_key_verify, depth, best_score,
-                    x1, y1, x2, y2, self)
+                    xy1, xy2, self)
 
         return best_score
 
     def iterate(self):
-        start = time.time()
         for depth in range(60):
             score = self.search(depth)
             # Search until our depth is sufficient to ensure a minimal solution.
@@ -222,15 +258,17 @@ class Board:
             hash_key_verify = self.hash_key >> 32
             entry = HASH_TABLE[hash_index]
             if entry:
-                (key, depth, score, from_x, from_y, to_x, to_y) = hash_entry_decode(entry)
+                (key, depth, score, from_xy, to_xy) = hash_entry_decode(entry)
                 if key != hash_key_verify:
                     break
                 # Decode move
-                index = self.state[from_y][from_x]
+                state = self.get_state_array()
+                fy, fx = decompose(from_xy)
+                index = state[fy][fx]
                 assert index >= 0
                 piece = self.pieces[index]
-                assert piece.x == from_x and piece.y == from_y
-                move = Move(index, to_x - from_x, to_y - from_y)
+                assert piece.xy == from_xy
+                move = Move(index, to_xy - from_xy)
                 self.make_move(move)
                 moves.append(move)
             else:
@@ -246,12 +284,13 @@ def random_board():
     # Start with a winning position--we're working backwards to the longest puzzle,
     # so we want to make sure that it's both solveable and that we don't get stuck in a local maximum
     x = 4
-    board = Board(size, [Piece(x, 2, 2, 1)])
+    main_y = 2
+    board = Board(size, [Piece(main_y * size + x, 1, 2)])
 
     # Uniform random between 8-18 pieces, placed greedily, with early exit if we can't find
     # a place for a piece
     for p in range(random.randint(8, 16)):
-        horizontal = bool(random.randint(0, 1))
+        horizontal = random.randint(0, 1)
         # 80% chance of 2x1, otherwise 3x1
         piece_size = 3 if random.random() > .8 else 2
         # Random starting coordinate
@@ -260,23 +299,24 @@ def random_board():
 
         # Kinda hacky: no other horizontal pieces on the same row as the main piece
         if horizontal:
-            start_points = [[x, y] for [x, y] in start_points if y != board.pieces[0].y]
+            start_points = [[x, y] for [x, y] in start_points if y != main_y]
 
         random.shuffle(start_points)
         for [major, minor] in start_points:
             for offset in range(piece_size):
                 if horizontal:
-                    space = board.state[minor][major + offset]
+                    mask = bitmask(minor, major + offset)
                 else:
-                    space = board.state[major + offset][minor]
-                if space != -1:
+                    mask = bitmask(major + offset, minor)
+                if board.state & mask:
                     break
             else:
                 # Nothing in the way, we can place the piece
                 if horizontal:
-                    piece = Piece(major, minor, piece_size, 1)
+                    xy = compose(minor, major)
                 else:
-                    piece = Piece(minor, major, 1, piece_size)
+                    xy = compose(major, minor)
+                piece = Piece(xy, horizontal, piece_size)
                 # Kinda hacky, reaching into Board's internals
                 board.place(piece, len(board.pieces))
                 board.pieces.append(piece)
@@ -356,10 +396,19 @@ def parse(string):
 
     # Hacky sorting
     piece_bounds = [piece_bounds.pop('+')] + [v for k, v in sorted(piece_bounds.items())]
+
+    size = len(lines)
     pieces = []
     for x1, y1, x2, y2 in piece_bounds:
-        pieces.append(Piece(x1, y1, x2 - x1 + 1, y2 - y1 + 1))
-    return Board(len(lines), pieces)
+        assert (x1 == x2) ^ (y1 == y2)
+        if x2 != x1:
+            hori = 1
+            p_size = x2 - x1 + 1
+        else:
+            hori = 0
+            p_size = y2 - y1 + 1
+        pieces.append(Piece(y1 * size + x1, hori, p_size))
+    return Board(size, pieces)
 
 if len(sys.argv) > 1 and sys.argv[1] == '-c':
     with open('current-puzzle.txt') as f:
