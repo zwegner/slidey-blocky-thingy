@@ -361,7 +361,7 @@ class Board extends React.Component {
 
 class PuzzleList extends React.Component {
     render() {
-        return <div>
+        return <div style={{ height: '100%' }}>
                 <div>Select a puzzley buzzo!</div>
                 <div style={{ paddingTop: '10px' }}/>
                 <ul>
@@ -386,11 +386,12 @@ class Base extends React.Component {
     render() {
         return <div style={{
                 backgroundColor: '#888',
-                height: '100%', 
+                height: '100%',
                 width: '100%', }}>
                 <div style={{ paddingTop: '20px',
                     textAlign: 'center',
-                    fontFamily: 'Helvetica' 
+                    fontFamily: 'Helvetica',
+                    height: '100%',
                     }}>
                     <h1 style={{ textShadow: '2px 2px 2px #CCC' }}>Slidey Blocky Thingy</h1>
                     { this.state.currentPuzzle !== null ?
