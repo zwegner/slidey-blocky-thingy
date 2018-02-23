@@ -11,23 +11,27 @@
         <div id="content" style="height: 100%"></div>
     </body>
     <style>
-    ul {
-        height: 80%;
+    .list-holder {
         width: 400px;
+        height: 80%;
         overflow-y: scroll;
-        text-align: left;
-        margin: auto;
-        list-style-type: none;
         border: 3px inset;
-        padding: 0px;
+        margin: auto;
     }
-    ul > li {
-        border: 1px solid #333;
-        padding: 3px;
+    table {
+        width: 100%;
+        list-style-type: none;
+        border-collapse: collapse;
     }
-    ul > li:hover {
+    tr {
+        border: 2px solid #333;
+    }
+    tr:hover {
         background-color: #555;
         color: #AAA;
+    }
+    td {
+        padding: 3px;
     }
 
     .button {

@@ -187,6 +187,25 @@ class Board extends React.Component {
         throw 'What?';
     }
 
+    updateRecords() {
+        if (!this.isWon())
+            throw 'bad update';
+        var moves = this.state.moves.length;
+
+        // XXX meh, grab the initial position string, so the records aren't sensitive to the
+        // ordering of puzzles. This logic is duplicated, gross.
+        var posStr = this.props.posStr;
+        if (this.props.puzzleNumber !== null)
+            posStr = PUZZLES[this.props.puzzleNumber].board;
+        if (posStr) {
+            var records = JSON.parse(localStorage.getItem('puzzle-records') || '{}');
+            if (records[posStr] === undefined || records[posStr] > moves) {
+                records[posStr] = moves;
+                localStorage.setItem('puzzle-records', JSON.stringify(records));
+            }
+        }
+    }
+
     getPieceBounds(piece) {
         var minX = 0, maxX = 0, minY = 0, maxY = 0;
         if (piece.dx > 1) {
@@ -240,8 +259,14 @@ class Board extends React.Component {
                 dy = Math.min(maxY, Math.max(minY, this.state.offsetY));
             dx = Math.round(dx / BOX_WIDTH);
             dy = Math.round(dy / BOX_WIDTH);
-            if (dx || dy)
+            if (dx || dy) {
                 this.doMove(new Move({index: this.state.draggingIndex, dx: dx, dy: dy}), null);
+                // Check for winning states and update local storage to reflect the possible
+                // new record. We do this in dragEnd since it's the only place where a "real"
+                // move is made (i.e. not retracing history).
+                if (this.isWon())
+                    this.updateRecords();
+            }
         }
         this.setState({offsetX: null, offsetY: null, draggingIndex: null});
         e.stopPropagation();
@@ -361,15 +386,24 @@ class Board extends React.Component {
 
 class PuzzleList extends React.Component {
     render() {
+        var records = JSON.parse(localStorage.getItem('puzzle-records') || '{}');
         return <div style={{ height: '100%' }}>
                 <div>Select a puzzley buzzo!</div>
                 <div style={{ paddingTop: '10px' }}/>
-                <ul>
-                    { PUZZLES.map((p, i) => <li key={i} onClick={() => this.props.selectPuzzle(i)}>
-                            <div><strong>Puzzle {i + 1}</strong></div>
-                            <div>{ p.moves} moves</div>
-                        </li>) }
-                </ul>
+                <div className="list-holder">
+                    <table><tbody>
+                        { PUZZLES.map((p, i) => <tr key={i} onClick={() => this.props.selectPuzzle(i)}>
+                                <td style={{ textAlign: 'left' }}>
+                                    <div><strong>Puzzle { i + 1 }</strong></div>
+                                    <div>{ p.moves } moves</div>
+                                </td>
+                                <td style={{ textAlign: 'right' }}>
+                                    { records && records[p.board] !== undefined ? 
+                                            'Your best: ' + records[p.board] : ''}
+                                </td>
+                            </tr>) }
+                    </tbody></table>
+                </div>
             </div>;
     }
 }
