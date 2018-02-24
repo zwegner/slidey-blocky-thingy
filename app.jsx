@@ -280,6 +280,29 @@ var PUZZLES = [
     {"moves": 22, "board": "88444B 6662.B ++.239 A.5539 A.1CC9 771..."},
 ];
 
+warningGiven = false;
+function loadRecords() {
+    var records;
+    try {
+        records = localStorage.getItem('puzzle-records');
+    } catch (e) {
+        if (!warningGiven) {
+            alert("Cannot access local storage. Puzzle records won't be saved.");
+            warningGiven = true;
+        }
+        return {};
+    }
+    return JSON.parse(records || '{}');
+}
+
+function storeRecords(records) {
+    try {
+        localStorage.setItem('puzzle-records', JSON.stringify(records));
+    } catch (e) {
+        // Just ignore errors
+    }
+}
+
 class Piece {
     constructor(props) {
         this.isMain = props.isMain;
@@ -302,9 +325,8 @@ class Board extends React.Component {
     constructor(props) {
         super(props);
         var pieces, size;
-        var posStr = props.posStr;
-        if (props.puzzleNumber !== null)
-            posStr = PUZZLES[props.puzzleNumber].board;
+        var posStr = this.getPosStr(props);
+
         if (posStr) {
             var pieceBounds = {};
             var lines = posStr.replace(/ /g, '\n').split('\n');
@@ -417,21 +439,25 @@ class Board extends React.Component {
         throw 'What?';
     }
 
+    getPosStr(props) {
+        var posStr = props.posStr;
+        if (props.puzzleNumber !== null)
+            posStr = PUZZLES[props.puzzleNumber].board;
+        return posStr;
+    }
+
     updateRecords() {
         if (!this.isWon())
             throw 'bad update';
         var moves = this.state.moves.length;
 
-        // XXX meh, grab the initial position string, so the records aren't sensitive to the
-        // ordering of puzzles. This logic is duplicated, gross.
-        var posStr = this.props.posStr;
-        if (this.props.puzzleNumber !== null)
-            posStr = PUZZLES[this.props.puzzleNumber].board;
+        // Grab the initial position string, so the records aren't sensitive to the ordering of puzzles.
+        var posStr = this.getPosStr(this.props);
         if (posStr) {
-            var records = JSON.parse(localStorage.getItem('puzzle-records') || '{}');
+            var records = loadRecords();
             if (records[posStr] === undefined || records[posStr] > moves) {
                 records[posStr] = moves;
-                localStorage.setItem('puzzle-records', JSON.stringify(records));
+                storeRecords(records);
             }
         }
     }
@@ -616,7 +642,7 @@ class Board extends React.Component {
 
 class PuzzleList extends React.Component {
     render() {
-        var records = JSON.parse(localStorage.getItem('puzzle-records') || '{}');
+        var records = loadRecords();
         return <div style={{ height: '100%' }}>
                 <div>Select a puzzley buzzo!</div>
                 <div style={{ paddingTop: '10px' }}/>
