@@ -373,26 +373,35 @@ function makeShadow(shadowSize) {
 }
 
 warningGiven = false;
-function loadRecords() {
-    var records;
+function lsLoad(key) {
     try {
-        records = localStorage.getItem('puzzle-records');
+        value = localStorage.getItem(key);
     } catch (e) {
         if (!warningGiven) {
-            alert("Cannot access local storage. Puzzle records won't be saved.");
+            alert("Cannot access local storage. Game state and puzzle records won't be saved.");
             warningGiven = true;
         }
-        return {};
+        return null;
     }
-    return JSON.parse(records || '{}');
+    if (value === '' || value === null)
+        return null;
+    return JSON.parse(value);
 }
 
-function storeRecords(records) {
+function lsStore(key, value) {
     try {
-        localStorage.setItem('puzzle-records', JSON.stringify(records));
+        localStorage.setItem(key, JSON.stringify(value));
     } catch (e) {
         // Just ignore errors
     }
+}
+
+function loadRecords() {
+    return lsLoad('puzzle-records') || {};
+}
+
+function storeRecords(records) {
+    lsStore('puzzle-records', records);
 }
 
 class Piece {
