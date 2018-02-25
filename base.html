@@ -1,9 +1,15 @@
 <!DOCTYPE html>
-<html style="height: 100%">
+<html>
     <head>
         <meta charset="utf-8">
-        <script src="react/react.development.js"></script>
-        <script src="react/react-dom.development.js"></script>
+        <title>Slidey Blocky Thingy</title>
+        <meta name="viewport" content="width=device-width, user-scalable=no">
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <link rel="favicon" href="icon.png" /> 
+        <link rel="apple-touch-icon" href="icon.png" /> 
+
+        <script src="react/react.js"></script>
+        <script src="react/react-dom.js"></script>
         <script src="react/JSXTransformer.js"></script>
         <script src="app.jsx" type="text/jsx"></script>
     </head>
@@ -40,17 +46,16 @@
         color: #333;
         background-color: #DDD;
         border-style: outset;
+        height: 1.6em;
+        /* Un-doucheify the buttons on iPhone */
+        -webkit-appearance: none;
+        padding: 0 .3em 0 .3em;
     }
     .bigButton {
-        height: 50px;
-        width: 50px;
-        font-size: 30px;
-        margin: 10px;
+        font-size: 30pt;
     }
     .smallButton {
-        height: 30px;
-        font-size: 20px;
-        margin: 5px;
+        font-size: 15pt;
     }
     .button:disabled {
         color: #AAA;

@@ -1,4 +1,4 @@
-var BOX_WIDTH = 50;
+var BOX_WIDTH = 55;
 
 var PUZZLES = [
     {"moves": 11, "board": "...... .755AA 87++19 833219 BB62.9 ..6244"},
@@ -486,47 +486,54 @@ class Board extends React.Component {
     }
 
     dragStart(index, e) {
-        if (e.button !== 0)
-            return;
-        this.setState({dragStartX: e.pageX, dragStartY: e.pageY, draggingIndex: index});
         e.stopPropagation();
         e.preventDefault();
+        if (e.targetTouches)
+            e = e.targetTouches[0];
+        if (e.button !== undefined && e.button !== 0)
+            return;
+        this.setState({dragStartX: e.pageX, dragStartY: e.pageY, draggingIndex: index});
     }
 
     drag(e) {
+        // Prevent default whether we're actually dragging a piece or not, to prevent
+        // overscrolling. Pretty hacky!
+        e.preventDefault();
+
         if (this.state.draggingIndex === null)
             return;
+        e.stopPropagation();
+        if (e.targetTouches)
+            e = e.targetTouches[0];
         this.setState({
             offsetX: e.pageX - this.state.dragStartX,
             offsetY: e.pageY - this.state.dragStartY
         });
-        e.stopPropagation();
-        e.preventDefault();
     }
 
     dragEnd(e) {
-        if (this.state.draggingIndex !== null) {
-            var piece = this.state.pieces[this.state.draggingIndex];
-            var [minX, maxX, minY, maxY] = this.getPieceBounds(piece);
-            var dx = 0, dy = 0;
-            if (this.state.offsetX !== null)
-                dx = Math.min(maxX, Math.max(minX, this.state.offsetX));
-            if (this.state.offsetY !== null)
-                dy = Math.min(maxY, Math.max(minY, this.state.offsetY));
-            dx = Math.round(dx / BOX_WIDTH);
-            dy = Math.round(dy / BOX_WIDTH);
-            if (dx || dy) {
-                this.doMove(new Move({index: this.state.draggingIndex, dx: dx, dy: dy}), null);
-                // Check for winning states and update local storage to reflect the possible
-                // new record. We do this in dragEnd since it's the only place where a "real"
-                // move is made (i.e. not retracing history).
-                if (this.isWon())
-                    this.updateRecords();
-            }
-        }
-        this.setState({offsetX: null, offsetY: null, draggingIndex: null});
+        if (this.state.draggingIndex === null)
+            return;
         e.stopPropagation();
         e.preventDefault();
+        var piece = this.state.pieces[this.state.draggingIndex];
+        var [minX, maxX, minY, maxY] = this.getPieceBounds(piece);
+        var dx = 0, dy = 0;
+        if (this.state.offsetX !== null)
+            dx = Math.min(maxX, Math.max(minX, this.state.offsetX));
+        if (this.state.offsetY !== null)
+            dy = Math.min(maxY, Math.max(minY, this.state.offsetY));
+        dx = Math.round(dx / BOX_WIDTH);
+        dy = Math.round(dy / BOX_WIDTH);
+        if (dx || dy) {
+            this.doMove(new Move({index: this.state.draggingIndex, dx: dx, dy: dy}), null);
+            // Check for winning states and update local storage to reflect the possible
+            // new record. We do this in dragEnd since it's the only place where a "real"
+            // move is made (i.e. not retracing history).
+            if (this.isWon())
+                this.updateRecords();
+        }
+        this.setState({offsetX: null, offsetY: null, draggingIndex: null});
     }
 
     componentWillMount() {
@@ -534,11 +541,15 @@ class Board extends React.Component {
         // things happen, no matter where the mouse is
         document.addEventListener('mousemove', this.drag);
         document.addEventListener('mouseup', this.dragEnd);
+        document.addEventListener('touchmove', this.drag);
+        document.addEventListener('touchend', this.dragEnd);
     }
 
     componentWillUnmount() {
         document.removeEventListener('mousemove', this.drag);
         document.removeEventListener('mouseup', this.dragEnd);
+        document.removeEventListener('touchmove', this.drag);
+        document.removeEventListener('touchend', this.dragEnd);
     }
 
     render() {
@@ -550,13 +561,14 @@ class Board extends React.Component {
                 <div>
                     <input type='button' disabled={ this.props.puzzleNumber == 0 }
                         onClick={ (e) => this.props.selectPuzzle(this.props.puzzleNumber - 1) }
-                        className='button smallButton' value='&#x25C0;'/>
-                    <div style={{ display: 'inline', width: '80px' }}>
+                        className='button smallButton' value='&#x25C0;&#xFE0E;'/>
+                    <div style={{ display: 'inline', width: '80px', margin: '5px' }}>
                         Puzzle {this.props.puzzleNumber + 1}
                     </div>
                     <input type='button' disabled={ this.props.puzzleNumber == PUZZLES.length - 1 }
                         onClick={ (e) => this.props.selectPuzzle(this.props.puzzleNumber + 1) }
-                        className='button smallButton' value='&#x25B6;'/>
+                        className='button smallButton' value='&#x25B6;&#xFE0E;'/>
+                    <span style={{ paddingLeft: '10px' }}/>
                     <input type='button' onClick={ (e) => this.props.selectPuzzle(null) }
                         className='button smallButton' value='List'/>
                 </div>
@@ -587,6 +599,7 @@ class Board extends React.Component {
                                 key={index}
 
                                 onMouseDown={ (e) => this.dragStart(index, e) }
+                                onTouchStart={ (e) => this.dragStart(index, e) }
 
                                 style={{
                                     marginTop: y,
@@ -624,12 +637,12 @@ class Board extends React.Component {
                     <div style={{ display: 'inline' }}>
                     <input type='button' disabled={ this.state.moves.length == 0 }
                         onClick={ (e) => this.doMove(null, true) }
-                        className='button bigButton' value='&#x25C0;'/>
+                        className='button bigButton' value='&#x25C0;&#xFE0E;'/>
                     </div>
                     <div style={{ display: 'inline' }}>
                     <input type='button' disabled={ this.state.futureMoves.length == 0 }
                         onClick={ (e) => this.doMove(null, false) }
-                        className='button bigButton' value='&#x25B6;'/>
+                        className='button bigButton' value='&#x25B6;&#xFE0E;'/>
                     </div>
                     <div style={{ display: 'inline', fontSize: '12', width: '80px' }}>
                         Moves: { this.state.moves.length }
