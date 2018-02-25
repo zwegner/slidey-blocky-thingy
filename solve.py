@@ -334,7 +334,18 @@ def random_board():
             break
     return board
 
+# Node counter and limit for the puzzle generation search (which wraps around the internal
+# solver search). The limit means we won't always find the longest puzzle that ends with
+# our given ending position, but the depth-first search seems to find near-optimal puzzles
+# pretty quickly, and adding the node limit greatly speeds up the puzzle generation search.
+NODES = 0
+NODE_LIMIT = 20000
+
 def generation_search(board, target_score, best_score):
+    global NODES, NODE_LIMIT
+    NODES += 1
+    if NODES > NODE_LIMIT:
+        return best_score, None
     best_coords = None
     for move in board.gen_moves():
         board.make_move(move)
@@ -359,6 +370,7 @@ def generation_search(board, target_score, best_score):
     return best_score, best_coords
 
 def generate_puzzle(board=None, threshold=None):
+    global NODES
     if not board:
         board = random_board()
 
@@ -366,7 +378,7 @@ def generate_puzzle(board=None, threshold=None):
             f.write(board.board_str())
 
     # Minimum score for "interesting" puzzles
-    threshold = threshold or 240
+    threshold = threshold or 235
 
     # Clear hash--hash keys are only valid for a given board configuration
     for i in range(len(HASH_TABLE)):
@@ -375,6 +387,7 @@ def generate_puzzle(board=None, threshold=None):
     if not score:
         return None
 
+    NODES = 0
     best_score, best_coords = generation_search(board, score, threshold)
 
     if best_score < threshold:
