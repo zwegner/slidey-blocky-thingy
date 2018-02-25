@@ -426,7 +426,7 @@ class Board extends React.Component {
     constructor(props) {
         super(props);
         var pieces, size;
-        var posStr = this.getPosStr(props);
+        var posStr = this.getPosStr();
 
         if (posStr) {
             var pieceBounds = {};
@@ -531,6 +531,12 @@ class Board extends React.Component {
 
         this.setState({board: this.state.board, pieces: this.state.pieces,
             moves: moves, futureMoves: futureMoves});
+
+        // Store the backward/forward move history into local storage, as well as
+        // this puzzle's initial configuration so we can verify them if the page gets reloaded
+        lsStore('current-puzzle-moves', moves.map((m) => [m.index, m.dx, m.dy]));
+        lsStore('current-puzzle-future-moves', futureMoves.map((m) => [m.index, m.dx, m.dy]));
+        lsStore('current-puzzle-pos-str', this.getPosStr());
     }
 
     isWon() {
@@ -540,10 +546,10 @@ class Board extends React.Component {
         throw 'What?';
     }
 
-    getPosStr(props) {
-        var posStr = props.posStr;
-        if (props.puzzleNumber !== null)
-            posStr = PUZZLES[props.puzzleNumber].board;
+    getPosStr() {
+        var posStr = this.props.posStr;
+        if (this.props.puzzleNumber !== null)
+            posStr = PUZZLES[this.props.puzzleNumber].board;
         return posStr;
     }
 
@@ -553,7 +559,7 @@ class Board extends React.Component {
         var moves = this.state.moves.length;
 
         // Grab the initial position string, so the records aren't sensitive to the ordering of puzzles.
-        var posStr = this.getPosStr(this.props);
+        var posStr = this.getPosStr();
         if (posStr) {
             var records = loadRecords();
             if (records[posStr] === undefined || records[posStr] > moves) {
@@ -644,6 +650,20 @@ class Board extends React.Component {
         document.addEventListener('mouseup', this.dragEnd);
         document.addEventListener('touchmove', this.drag);
         document.addEventListener('touchend', this.dragEnd);
+
+        // Try to grab move lists for this puzzle, making sure they're for this puzzle
+        var lsPosStr = lsLoad('current-puzzle-pos-str');
+        if (lsPosStr == this.getPosStr()) {
+            // We have to set these move lists up in a particular order, since doMove overwrites the
+            // values in local storage. So first, we load both the backward and forward lists.
+            // Then, make all the moves in the backwards list, and finally, load the future moves.
+            var moves = lsLoad('current-puzzle-moves') || [];
+            var futureMoves = lsLoad('current-puzzle-future-moves') || [];
+            for (var [index, dx, dy] of moves)
+                this.doMove(new Move({index: index, dx: dx, dy: dy}));
+            this.setState({futureMoves:
+                futureMoves.map(([index, dx, dy]) => new Move({index: index, dx: dx, dy: dy}))});
+        }
     }
 
     componentWillUnmount() {
@@ -655,7 +675,7 @@ class Board extends React.Component {
 
     render() {
         var record = null;
-        var posStr = this.getPosStr(this.props);
+        var posStr = this.getPosStr();
         if (posStr) {
             var records = loadRecords();
             if (records[posStr] !== undefined)
@@ -788,11 +808,22 @@ class Base extends React.Component {
     constructor(props) {
         super(props);
         this.selectPuzzle = this.selectPuzzle.bind(this);
-        this.state = {currentPuzzle: null};
+
+        // Try to load the current puzzle from local storage
+        var currentPuzzle = lsLoad('current-puzzle');
+        this.state = {currentPuzzle: currentPuzzle};
     }
+
     selectPuzzle(i) {
         this.setState({currentPuzzle: i});
+
+        // Store the selected puzzle in local storage, and erase the move lists
+        lsStore('current-puzzle', i);
+        lsStore('current-puzzle-pos-str', PUZZLES[i].board);
+        lsStore('current-puzzle-moves', []);
+        lsStore('current-puzzle-future-moves', []);
     }
+
     render() {
         return <div style={{ 
                 textAlign: 'center',
