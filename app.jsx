@@ -280,6 +280,16 @@ var PUZZLES = [
     {"moves": 22, "board": "88444B 6662.B ++.239 A.5539 A.1CC9 771..."},
 ];
 
+
+// Construct wacky text outline
+function makeShadow(shadowSize) {
+    var shadow = '';
+    for (var x = -shadowSize; x <= shadowSize; x += .5)
+        for (var y = -shadowSize; y <= shadowSize; y += .5)
+            shadow += x + 'px ' + y + 'px ' + (x >= -y ? 'var(--back-color)' : '#FFF') + ', ';
+    return shadow + (shadowSize + .5) + 'px ' + (shadowSize + .5) + 'px .5px #000';
+}
+
 warningGiven = false;
 function loadRecords() {
     var records;
@@ -553,9 +563,19 @@ class Board extends React.Component {
     }
 
     render() {
+        var record = null;
+        var posStr = this.getPosStr(this.props);
+        if (posStr) {
+            var records = loadRecords();
+            if (records[posStr] !== undefined)
+                record = records[posStr];
+        }
+        var optimal = null;
+        if (this.props.puzzleNumber !== null)
+            optimal = PUZZLES[this.props.puzzleNumber].moves;
+
         return <div>
-                <div>Move those blocky bubbos all around until you can shimmy that greenish doodleydoo off to the right!</div>
-                <div>Tall tippies can only move verticalicularly! Fat flerbies can only move horizontimontally!</div>
+
                 <div style={{ paddingTop: '10px' }}/>
 
                 <div>
@@ -575,17 +595,14 @@ class Board extends React.Component {
 
                 <div style={{ paddingTop: '10px' }}/>
 
-                <div style={{
-                    backgroundColor: '#666',
+                <div className="inset-box" style={{
                     height: this.state.size * BOX_WIDTH,
                     width: this.state.size * BOX_WIDTH,
                     margin: 'auto',
                     borderWidth: '5px',
-                    borderStyle: 'inset',
                     borderRadius: '5px',
                 }} >
                 { this.state.pieces.map((piece, index) => {
-                        var color = piece.isMain ? '#099' : '#999';
                         var x = piece.x * BOX_WIDTH, y = piece.y * BOX_WIDTH;
                         var isWon = piece.isMain && this.isWon();
                         if (index === this.state.draggingIndex) {
@@ -604,50 +621,46 @@ class Board extends React.Component {
                                 style={{
                                     marginTop: y,
                                     marginLeft: isWon ? x + 2 * BOX_WIDTH : x,
-                                    transform: isWon ? 'translate(400px, 1000px) rotate(540deg)' : '',
+                                    transform: isWon ? 'translate(200px, 500px) rotate(540deg)' : '',
                                     height: piece.dy * BOX_WIDTH,
                                     width: piece.dx * BOX_WIDTH,
                                     // Animate movements, but only pieces that aren't currently being dragged
                                     transition: index !== this.state.draggingIndex ? 
-                                        isWon ? 'transform 1000ms ease-in 250ms, margin ease-in 250ms' : 'margin 250ms' : '',
+                                        isWon ? 'transform 500ms ease-in 250ms, margin ease-in 250ms' : 'margin 250ms' : '',
                                     position: 'absolute'}}>
-                                <div style={{
-                                    color: color,
-                                    backgroundColor: color,
-                                    position: 'absolute',
-                                    top: '0px', bottom: '0px', left: '0px', right: '0px',
-                                    margin: '1px',
-                                    borderWidth: '4px',
-                                    borderStyle: 'outset',
-                                    borderRadius: '4px',
-                                    zIndex: 10,
-                                }}/>
-                                <div style={{
-                                    position: 'absolute',
-                                    top: '0px', bottom: '0px', left: '0px', right: '0px',
-                                    margin: '1px',
-                                    borderRadius: '4px',
-                                    boxShadow: '2px 2px 1px black',
-                                    zIndex: 5,
-                                }}/>
+                                <div className={"block" + (piece.isMain ? " main-block" : "")}/>
+                                <div className="block block-shadow"/>
                             </div>;
                     }) }
                 </div>
-                <div>
-                    <div style={{ display: 'inline' }}>
-                    <input type='button' disabled={ this.state.moves.length == 0 }
-                        onClick={ (e) => this.doMove(null, true) }
-                        className='button bigButton' value='&#x25C0;&#xFE0E;'/>
-                    </div>
-                    <div style={{ display: 'inline' }}>
-                    <input type='button' disabled={ this.state.futureMoves.length == 0 }
-                        onClick={ (e) => this.doMove(null, false) }
-                        className='button bigButton' value='&#x25B6;&#xFE0E;'/>
-                    </div>
-                    <div style={{ display: 'inline', fontSize: '12', width: '80px' }}>
-                        Moves: { this.state.moves.length }
-                        { this.props.puzzleNumber !== null ? '/' + PUZZLES[this.props.puzzleNumber].moves : ''}
-                    </div>
+
+                <div style={{ paddingTop: '10px' }}/>
+
+                <div style={{ height: '80px' }}>
+                    <table style={{ margin: 'auto'}}><tbody><tr>
+                        <td> <div className="inset-box move-info-box"
+                                style={{ textShadow: makeShadow(.5) }} >
+                            Moves: { this.state.moves.length }
+                            { optimal !== null ? '/' + optimal : ''}
+                            { record !== null ?
+                                <span><br/>
+                                    Record: {record}
+                                    {record == optimal ? <font color="green">{'\u2713'}</font> : ''}
+                                </span> 
+                                : ''}
+                        </div> </td>
+
+                        <td>
+                            <input type='button' disabled={ this.state.moves.length == 0 }
+                                onClick={ (e) => this.doMove(null, true) }
+                                className='button bigButton' value='&#x25C0;&#xFE0E;'/>
+                        </td>
+                        <td>
+                            <input type='button' disabled={ this.state.futureMoves.length == 0 }
+                                onClick={ (e) => this.doMove(null, false) }
+                                className='button bigButton' value='&#x25B6;&#xFE0E;'/>
+                        </td>
+                    </tr></tbody></table>
                 </div>
             </div>;
     }
@@ -656,8 +669,8 @@ class Board extends React.Component {
 class PuzzleList extends React.Component {
     render() {
         var records = loadRecords();
-        return <div style={{ height: '100%' }}>
-                <div>Select a puzzley buzzo!</div>
+        return <div>
+                <div>Select a puzzle!</div>
                 <div style={{ paddingTop: '10px' }}/>
                 <div className="list-holder">
                     <table><tbody>
@@ -668,7 +681,10 @@ class PuzzleList extends React.Component {
                                 </td>
                                 <td style={{ textAlign: 'right' }}>
                                     { records && records[p.board] !== undefined ? 
-                                            'Your best: ' + records[p.board] : ''}
+                                        <span>Record: {records[p.board]}
+                                            {records[p.board] == p.moves ?
+                                                <font color="green">{'\u2713'}</font> : ''}
+                                        </span> : ''}
                                 </td>
                             </tr>) }
                     </tbody></table>
@@ -687,21 +703,25 @@ class Base extends React.Component {
         this.setState({currentPuzzle: i});
     }
     render() {
-        return <div style={{
-                backgroundColor: '#888',
-                height: '100%',
-                width: '100%', }}>
-                <div style={{ paddingTop: '20px',
-                    textAlign: 'center',
-                    fontFamily: 'Helvetica',
-                    height: '100%',
-                    }}>
-                    <h1 style={{ textShadow: '2px 2px 2px #CCC' }}>Slidey Blocky Thingy</h1>
-                    { this.state.currentPuzzle !== null ?
-                        <Board key={this.state.currentPuzzle} puzzleNumber={this.state.currentPuzzle}
-                            selectPuzzle={this.selectPuzzle} />
-                        : <PuzzleList selectPuzzle={this.selectPuzzle}/> }
+        return <div style={{ 
+                textAlign: 'center',
+                fontFamily: 'Helvetica',
+                padding: '10px',
+                }}>
+                <div className="inset-box" style={{
+                    // HACK
+                    width: 6 * BOX_WIDTH,
+                    padding: '5px',
+                    margin: 'auto',
+                }} >
+                <div style={{ textShadow: makeShadow(0.5), fontSize: '30px', fontWeight: 'bold' }}>
+                    Slidey Blocky Thingy
                 </div>
+                </div>
+                { this.state.currentPuzzle !== null ?
+                    <Board key={this.state.currentPuzzle} puzzleNumber={this.state.currentPuzzle}
+                        selectPuzzle={this.selectPuzzle} />
+                    : <PuzzleList selectPuzzle={this.selectPuzzle}/> }
             </div>;
     }
 }

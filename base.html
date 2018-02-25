@@ -13,38 +13,41 @@
         <script src="react/JSXTransformer.js"></script>
         <script src="app.jsx" type="text/jsx"></script>
     </head>
-    <body style="margin: 0px; height: 100%">
-        <div id="content" style="height: 100%"></div>
-    </body>
     <style>
+    :root {
+        --top-color: #888;
+        --main-color: #099;
+        --back-color: #666;
+        --light-color: #CCC;
+        --dark-color: #333;
+    }
+
     .list-holder {
-        width: 400px;
-        height: 80%;
-        overflow-y: scroll;
+        width: 350px;
         border: 3px inset;
         margin: auto;
     }
-    table {
+    .list-holder table {
         width: 100%;
         list-style-type: none;
         border-collapse: collapse;
     }
-    tr {
-        border: 2px solid #333;
+    .list-holder tr {
+        border: 2px solid var(--dark-color);
     }
-    tr:hover {
-        background-color: #555;
-        color: #AAA;
+    .list-holder tr:hover {
+        color: var(--light-color);
+        background-color: var(--back-color);
     }
-    td {
+    .list-holder td {
         padding: 3px;
     }
 
     .button {
         border-width: 3px;
         border-radius: 3px;
-        color: #333;
-        background-color: #DDD;
+        color: var(--dark-color);
+        background-color: var(--light-color);
         border-style: outset;
         height: 1.6em;
         /* Un-doucheify the buttons on iPhone */
@@ -58,17 +61,63 @@
         font-size: 15pt;
     }
     .button:disabled {
-        color: #AAA;
-        background-color: #888;
+        color: var(--top-color);
+        background-color: var(--back-color);
         border-style: inset;
+        border-color: var(--back-color);
     }
     .button:enabled:active:hover {
-        color: #DDD;
-        background-color: #333;
+        color: var(--light-color);
+        background-color: var(--dark-color);
         border-style: inset;
+        border-color: var(--dark-color);
     }
 
+    .inset-box {
+        color: var(--light-color);
+        background-color: var(--back-color);
+        border-width: 3px;
+        border-style: inset;
+        border-radius: 3px;
+        border-color: var(--back-color);
+    }
+    .move-info-box {
+        /* HACK */
+        height: 52px;
+        width: 150px;
+        padding: 3px;
+        display: table-cell;
+        vertical-align: middle;
+        font-size: 16px;
+        line-height: 1.5em;
+    }
+
+    .block {
+        color: var(--top-color);
+        background-color: var(--top-color);
+        position: absolute;
+        top: 0px; bottom: 0px; left: 0px; right: 0px;
+        margin: 1px;
+        border-width: 4px;
+        border-style: outset;
+        border-radius: 4px;
+        border-color: var(--top-color);
+        z-index: 10;
+    }
+    .main-block {
+        color: var(--main-color);
+        background-color: var(--main-color);
+        border-color: var(--main-color);
+    }
+    .block-shadow {
+        box-shadow: 2px 2px 1px black;
+        z-index: 5;
+    }
     </style>
+
+    <body style="margin: 0px; background-color: var(--top-color)">
+        <div id="content"></div>
+    </body>
 
     <script type="text/jsx">
         ReactDOM.render(<Base />, document.getElementById('content'));
