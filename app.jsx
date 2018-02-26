@@ -363,15 +363,6 @@ var PUZZLES = [
     {"moves": 21, "board": "CCC558 339..8 6.9++8 677B44 AA.B11 ....22"},
 ];
 
-// Construct wacky text outline
-function makeShadow(shadowSize) {
-    var shadow = '';
-    for (var x = -shadowSize; x <= shadowSize; x += .5)
-        for (var y = -shadowSize; y <= shadowSize; y += .5)
-            shadow += x + 'px ' + y + 'px ' + (x >= -y ? 'var(--back-color)' : '#FFF') + ', ';
-    return shadow + (shadowSize + .5) + 'px ' + (shadowSize + .5) + 'px .5px #000';
-}
-
 warningGiven = false;
 function lsLoad(key) {
     try {
@@ -749,8 +740,7 @@ class Board extends React.Component {
 
                 <div style={{ height: '80px' }}>
                     <table style={{ margin: 'auto'}}><tbody><tr>
-                        <td> <div className="inset-box move-info-box"
-                                style={{ textShadow: makeShadow(.5) }} >
+                        <td> <div className="inset-box move-info-box">
                             Moves: { this.state.moves.length }
                             { optimal !== null ? '/' + optimal : ''}
                             { record !== null ?
@@ -835,10 +825,10 @@ class Base extends React.Component {
                     width: 6 * BOX_WIDTH,
                     padding: '5px',
                     margin: 'auto',
+                    fontSize: '30px',
+                    fontWeight: 'bold' 
                 }} >
-                <div style={{ textShadow: makeShadow(0.5), fontSize: '30px', fontWeight: 'bold' }}>
                     Slidey Blocky Thingy
-                </div>
                 </div>
                 { this.state.currentPuzzle !== null ?
                     <Board key={this.state.currentPuzzle} puzzleNumber={this.state.currentPuzzle}
