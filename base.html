@@ -3,7 +3,8 @@
     <head>
         <meta charset="utf-8">
         <title>Slidey Blocky Thingy</title>
-        <meta name="viewport" content="width=device-width, user-scalable=no">
+        <meta name="viewport" content="width=device-width, user-scalable=no,
+            minimum-scale=1, maximum-scale=1">
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <link rel="favicon" href="icon.png" /> 
         <link rel="apple-touch-icon" href="icon.png" /> 
@@ -56,6 +57,9 @@
     }
     .bigButton {
         font-size: 30pt;
+    }
+    .medButton {
+        font-size: 20pt;
     }
     .smallButton {
         font-size: 15pt;
@@ -114,6 +118,22 @@
         box-shadow: 2px 2px 1px black;
         z-index: 5;
     }
+
+    .overlay {
+        z-index: -20;
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        display: table;
+        top: 0;
+        opacity: 0;
+        transition: opacity 500ms 500ms;
+    }
+    .win-overlay {
+        z-index: 20;
+        opacity: 1;
+    }
+
     </style>
 
     <body style="margin: 0px; background-color: var(--top-color)">

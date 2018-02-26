@@ -676,8 +676,26 @@ class Board extends React.Component {
         if (this.props.puzzleNumber !== null)
             optimal = PUZZLES[this.props.puzzleNumber].moves;
 
+        var isWon = this.isWon();
+
         return <div>
 
+                <div className={ isWon ? 'overlay win-overlay' : 'overlay' }>
+                    { isWon ?
+                        <div style={{ display: 'table-cell', verticalAlign: 'middle' }}>
+                                <div style={{ color: '#FFF', fontWeight: 'bold', fontSize: '42px' }}>Nice.</div>
+                                <div style={{ paddingTop: '40px' }}/>
+                                <input type='button' disabled={ this.state.moves.length == 0 }
+                                    onClick={ (e) => this.doMove(null, true) }
+                                    className='button medButton' value='Stay Here'/>
+                                <span style={{ paddingLeft: '40px' }}/>
+                                <input type='button' disabled={ this.props.puzzleNumber == PUZZLES.length - 1 }
+                                    onClick={ (e) => this.props.selectPuzzle(this.props.puzzleNumber + 1) }
+                                    className='button medButton' value='Next Puzzle'/>
+                            </div>
+                        : <span />
+                    }
+                </div>
                 <div style={{ paddingTop: '10px' }}/>
 
                 <div>
@@ -697,6 +715,14 @@ class Board extends React.Component {
 
                 <div style={{ paddingTop: '10px' }}/>
 
+                <div style={{ 
+                    // This div is just to provide sizing for the winning piece clip
+                    // rectangle (which is actually clipped by the ancestor's overflow:
+                    // hidden), so it doesn't cause the page dimensions to blow up
+                    // CSS IS INSANE
+                    position: 'relative',
+                    height: '100%',
+                }}>
                 <div className="inset-box" style={{
                     height: this.state.size * BOX_WIDTH,
                     width: this.state.size * BOX_WIDTH,
@@ -706,7 +732,7 @@ class Board extends React.Component {
                 }} >
                 { this.state.pieces.map((piece, index) => {
                         var x = piece.x * BOX_WIDTH, y = piece.y * BOX_WIDTH;
-                        var isWon = piece.isMain && this.isWon();
+                        var isWinningPiece = piece.isMain && isWon;
                         if (index === this.state.draggingIndex) {
                             var [minX, maxX, minY, maxY] = this.getPieceBounds(piece);
                             if (this.state.offsetX !== null)
@@ -722,19 +748,22 @@ class Board extends React.Component {
 
                                 style={{
                                     marginTop: y,
-                                    marginLeft: isWon ? x + 2 * BOX_WIDTH : x,
-                                    transform: isWon ? 'translate(200px, 500px) rotate(540deg)' : '',
+                                    marginLeft: isWinningPiece ? x + 2 * BOX_WIDTH : x,
                                     height: piece.dy * BOX_WIDTH,
                                     width: piece.dx * BOX_WIDTH,
+                                    // Winning piece spins around and gets big enough to cover the screen
+                                    transform: isWinningPiece ? 'scale(100, 100) rotate(720deg)' : '',
+                                    opacity: isWinningPiece ? '.7' : 'inherit',
+                                    zIndex: isWinningPiece ? '15' : 'inherit',
                                     // Animate movements, but only pieces that aren't currently being dragged
                                     transition: index !== this.state.draggingIndex ? 
-                                        isWon ? 'transform 500ms ease-in 250ms, margin ease-in 250ms' : 'margin 250ms' : '',
+                                        isWinningPiece ? 'transform 750ms 250ms, opacity 750ms, margin ease-in 250ms' : 'margin 250ms' : '',
                                     position: 'absolute'}}>
                                 <div className={"block" + (piece.isMain ? " main-block" : "")}/>
                                 <div className="block block-shadow"/>
                             </div>;
                     }) }
-                </div>
+                </div> </div>
 
                 <div style={{ paddingTop: '10px' }}/>
 
@@ -816,24 +845,32 @@ class Base extends React.Component {
 
     render() {
         return <div style={{ 
-                textAlign: 'center',
-                fontFamily: 'Helvetica',
-                padding: '10px',
-                }}>
-                <div className="inset-box" style={{
-                    // HACK
-                    width: 6 * BOX_WIDTH,
-                    padding: '5px',
-                    margin: 'auto',
-                    fontSize: '30px',
-                    fontWeight: 'bold' 
-                }} >
-                    Slidey Blocky Thingy
+                    textAlign: 'center',
+                    fontFamily: 'Helvetica',
+                    width: '100%',
+                    height: '100%',
+                    // Weird shit for centering
+                    position: 'absolute',
+                    display: 'table',
+                    // This is to clip the winning piece at the screen boundary when it explodes
+                    overflow: 'hidden',
+                    }}>
+                <div style={{ display: 'table-cell', verticalAlign: 'middle' }}>
+                    <div className="inset-box" style={{
+                        // HACK
+                        width: 6 * BOX_WIDTH,
+                        padding: '5px',
+                        margin: 'auto',
+                        fontSize: '30px',
+                        fontWeight: 'bold' 
+                    }} >
+                        Slidey Blocky Thingy
+                    </div>
+                    { this.state.currentPuzzle !== null ?
+                        <Board key={this.state.currentPuzzle} puzzleNumber={this.state.currentPuzzle}
+                            selectPuzzle={this.selectPuzzle} />
+                        : <PuzzleList selectPuzzle={this.selectPuzzle}/> }
                 </div>
-                { this.state.currentPuzzle !== null ?
-                    <Board key={this.state.currentPuzzle} puzzleNumber={this.state.currentPuzzle}
-                        selectPuzzle={this.selectPuzzle} />
-                    : <PuzzleList selectPuzzle={this.selectPuzzle}/> }
             </div>;
     }
 }
