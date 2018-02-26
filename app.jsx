@@ -838,7 +838,7 @@ class Base extends React.Component {
 
         // Store the selected puzzle in local storage, and erase the move lists
         lsStore('current-puzzle', i);
-        lsStore('current-puzzle-pos-str', PUZZLES[i].board);
+        lsStore('current-puzzle-pos-str', i !== null ? PUZZLES[i].board : null);
         lsStore('current-puzzle-moves', []);
         lsStore('current-puzzle-future-moves', []);
     }
