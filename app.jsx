@@ -898,10 +898,10 @@ class Board extends React.Component {
     componentWillMount() {
         // Make the mouse move/mouse up event handlers global, since we want to know whenever these
         // things happen, no matter where the mouse is
-        document.addEventListener('mousemove', this.drag);
-        document.addEventListener('mouseup', this.dragEnd);
-        document.addEventListener('touchmove', this.drag);
-        document.addEventListener('touchend', this.dragEnd);
+        document.addEventListener('mousemove', this.drag, { passive: false });
+        document.addEventListener('mouseup', this.dragEnd, { passive: false });
+        document.addEventListener('touchmove', this.drag, { passive: false });
+        document.addEventListener('touchend', this.dragEnd, { passive: false });
 
         // Try to grab move lists for this puzzle, making sure they're for this puzzle
         var lsPosStr = lsLoad('current-puzzle-pos-str');
